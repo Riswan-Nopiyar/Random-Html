@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Classifier - Modern UI</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: white;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin: 10px 0 20px;
+        }
+
+        input[type="file"] {
+            padding: 10px 20px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        input[type="file"]:disabled {
+            background: rgba(255, 255, 255, 0.2);
+            cursor: not-allowed;
+        }
+
+        input[type="file"]:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        #imageContainer img {
+            max-width: 300px;
+            margin: 20px auto;
+            border-radius: 15px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #output {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            margin-top: 20px;
+            font-size: 1rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Classifier</h1>
+    <p>Unggah gambar untuk melihat hasil klasifikasinya.</p>
+    <input type="file" id="fileInput" accept="image/*" disabled>
+    <div id="imageContainer">
+        <img id="uploadedImage" src="" alt="">
+    </div>
+    <div id="output"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const output = document.getElementById('output');
+
+        let model;
+
+        // Load the MobileNet model
+        async function loadModel() {
+            output.textContent = "Loading model, please wait...";
+            model = await mobilenet.load();
+            output.textContent = "Model loaded. Please upload an image.";
+            fileInput.disabled = false; // Enable file input once the model is loaded
+        }
+
+        // Handle image upload
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImage.src = e.target.result;
+                    uploadedImage.onload = function() {
+                        classifyImage(uploadedImage);
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Classify the uploaded image
+        async function classifyImage(image) {
+            output.textContent = "Classifying image...";
+            const predictions = await model.classify(image);
+            displayPredictions(predictions);
+        }
+
+        // Display predictions
+        function displayPredictions(predictions) {
+            output.innerHTML = "<h3>Predictions:</h3>";
+            predictions.forEach(prediction => {
+                output.innerHTML += `<p>${prediction.className}: ${(prediction.probability * 100).toFixed(2)}%</p>`;
+            });
+        }
+
+        // Initialize the app
+        loadModel();
+    </script>
+</body>
+</html>
