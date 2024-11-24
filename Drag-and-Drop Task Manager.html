@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag-and-Drop Task Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .board {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
+            overflow-x: auto;
+            width: 90%;
+        }
+
+        .column {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .column h2 {
+            margin: 0;
+            margin-bottom: 10px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .tasks {
+            flex: 1;
+            min-height: 100px;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .task {
+            background-color: #e0e7ff;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            cursor: grab;
+            text-align: center;
+        }
+
+        .task:active {
+            cursor: grabbing;
+        }
+
+        .add-task {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .add-task input {
+            flex: 1;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+
+        .add-task button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .add-task button:hover {
+            background-color: #45a049;
+        }
+
+        .add-column {
+            margin-top: 10px;
+        }
+
+        .add-column button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .add-column button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        Drag-and-Drop Task Manager
+    </header>
+    <div class="board" id="board"></div>
+    <div class="add-column">
+        <button onclick="addColumn()">Add Column</button>
+    </div>
+    <script>
+        // Load board state from localStorage
+        const board = document.getElementById("board");
+        let columns = JSON.parse(localStorage.getItem("columns")) || [];
+
+        function saveState() {
+            localStorage.setItem("columns", JSON.stringify(columns));
+        }
+
+        function renderBoard() {
+            board.innerHTML = "";
+            columns.forEach((column, colIndex) => {
+                const columnElement = document.createElement("div");
+                columnElement.className = "column";
+
+                const title = document.createElement("h2");
+                title.textContent = column.title;
+
+                const taskContainer = document.createElement("div");
+                taskContainer.className = "tasks";
+                taskContainer.dataset.index = colIndex;
+
+                column.tasks.forEach((task, taskIndex) => {
+                    const taskElement = document.createElement("div");
+                    taskElement.className = "task";
+                    taskElement.draggable = true;
+                    taskElement.textContent = task;
+
+                    taskElement.addEventListener("dragstart", (e) => {
+                        e.dataTransfer.setData("text/plain", JSON.stringify({ colIndex, taskIndex }));
+                    });
+
+                    taskContainer.appendChild(taskElement);
+                });
+
+                taskContainer.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                });
+
+                taskContainer.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    const { colIndex: fromCol, taskIndex: fromTask } = JSON.parse(e.dataTransfer.getData("text/plain"));
+                    const task = columns[fromCol].tasks.splice(fromTask, 1)[0];
+                    columns[colIndex].tasks.push(task);
+                    saveState();
+                    renderBoard();
+                });
+
+                const addTaskContainer = document.createElement("div");
+                addTaskContainer.className = "add-task";
+
+                const taskInput = document.createElement("input");
+                taskInput.placeholder = "New task";
+
+                const addButton = document.createElement("button");
+                addButton.textContent = "Add";
+                addButton.addEventListener("click", () => {
+                    if (taskInput.value.trim()) {
+                        columns[colIndex].tasks.push(taskInput.value.trim());
+                        taskInput.value = "";
+                        saveState();
+                        renderBoard();
+                    }
+                });
+
+                addTaskContainer.appendChild(taskInput);
+                addTaskContainer.appendChild(addButton);
+
+                columnElement.appendChild(title);
+                columnElement.appendChild(taskContainer);
+                columnElement.appendChild(addTaskContainer);
+
+                board.appendChild(columnElement);
+            });
+        }
+
+        function addColumn() {
+            const title = prompt("Enter column title:");
+            if (title) {
+                columns.push({ title, tasks: [] });
+                saveState();
+                renderBoard();
+            }
+        }
+
+        renderBoard();
+    </script>
+</body>
+</html>
