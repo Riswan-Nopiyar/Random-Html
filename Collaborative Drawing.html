@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Collaborative Drawing</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f4f4f9;
+        }
+        canvas {
+            border: 1px solid #333;
+            background: white;
+        }
+        #toolbar {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 10px;
+        }
+        button, input[type="color"] {
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #eee;
+        }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <button id="clear">Clear</button>
+        <input type="color" id="colorPicker" value="#000000">
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const colorPicker = document.getElementById('colorPicker');
+        const clearButton = document.getElementById('clear');
+
+        let drawing = false;
+        let color = '#000000';
+        let socket = new WebSocket('ws://localhost:8080');
+
+        // Drawing functions
+        const startDrawing = (e) => {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        };
+
+        const draw = (e) => {
+            if (!drawing) return;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = color;
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+
+            // Send drawing data to WebSocket
+            socket.send(JSON.stringify({
+                type: 'draw',
+                x: e.offsetX,
+                y: e.offsetY,
+                color: color
+            }));
+        };
+
+        const stopDrawing = () => {
+            drawing = false;
+            ctx.closePath();
+        };
+
+        // Canvas events
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        // Color Picker
+        colorPicker.addEventListener('input', (e) => {
+            color = e.target.value;
+        });
+
+        // Clear button
+        clearButton.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            socket.send(JSON.stringify({ type: 'clear' }));
+        });
+
+        // WebSocket connection
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'draw') {
+                ctx.strokeStyle = data.color;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineTo(data.x, data.y);
+                ctx.stroke();
+            } else if (data.type === 'clear') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+
+        socket.onopen = () => console.log('WebSocket connection established.');
+        socket.onclose = () => console.log('WebSocket connection closed.');
+    </script>
+</body>
+</html>
